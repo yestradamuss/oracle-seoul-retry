@@ -1,0 +1,51 @@
+name: oracle-seoul-retry
+
+on:
+  workflow_dispatch: {}
+  # 아래 schedule은 Secrets를 전부 넣고 workflow_dispatch로 1회 성공 확인한 뒤에 주석을 푼다.
+  # (그 전에 켜면 매번 실패해서 GitHub가 실패 메일을 계속 보낸다)
+  # schedule:
+  #   - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-seoul-retry
+  cancel-in-progress: false
+
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_REGION: ${{ secrets.OCI_REGION }}
+      OCI_COMPARTMENT_ID: ${{ secrets.OCI_COMPARTMENT_ID }}
+      OCI_SUBNET_ID: ${{ secrets.OCI_SUBNET_ID }}
+      OCI_SSH_PUBLIC_KEY: ${{ secrets.OCI_SSH_PUBLIC_KEY }}
+      OCI_IMAGE_ID: ${{ secrets.OCI_IMAGE_ID }}
+      OCI_DISPLAY_NAME: ${{ secrets.OCI_DISPLAY_NAME }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: oci SDK 설치
+        run: pip install --quiet -r requirements.txt
+
+      - name: API 개인키 파일 준비
+        run: |
+          mkdir -p "$HOME/.oci"
+          printf '%s' "${{ secrets.OCI_PRIVATE_KEY }}" > "$HOME/.oci/key.pem"
+          chmod 600 "$HOME/.oci/key.pem"
+          echo "OCI_KEY_FILE_PATH=$HOME/.oci/key.pem" >> "$GITHUB_ENV"
+
+      - name: 1회 생성 시도
+        run: python3 oracle_retry_once.py
