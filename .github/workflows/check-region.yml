@@ -1,0 +1,40 @@
+name: oracle-korea-region-check
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "*/10 * * * *"   # 10분마다. 인증 없는 공개 API 호출 1번뿐이라 부담 없음.
+
+permissions:
+  contents: write   # region_state.json 커밋용
+
+concurrency:
+  group: oracle-korea-region-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 한국 홈 리전 노출 여부 확인
+        run: python3 check_home_region.py
+
+      - name: 상태 저장 (바뀐 경우에만 커밋)
+        run: |
+          git add region_state.json
+          if ! git diff --cached --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "update region state"
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              git rebase --abort 2>/dev/null || true
+              sleep 3
+            done
+          fi

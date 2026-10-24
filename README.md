@@ -1,7 +1,19 @@
 # oracle-seoul-retry
 
+이 저장소는 두 가지 **서로 다른** 자동 확인을 한다. 둘 다 PC를 켜 둘 필요 없이 GitHub Actions가 대신 한다.
+
+## A. 가입 화면에 한국이 홈 리전으로 뜨는지 확인 (`check_home_region.py`) — **가입 전, 지금 바로 켤 수 있음**
+Oracle Cloud 가입 시 "홈 리전" 선택 목록에 **South Korea Central(서울)/North(춘천)이 2026-10-24 기준
+한 달 넘게 아예 빠져 있는** 게 확인됐다 (신규 가입자에게 한국을 내어주지 않는 상태 — 웹 검색으로도 비슷한
+보고가 여럿 있었음). 이 목록은 인증·캡차 없이 열리는 공개 API(`signup-api.cloud.oracle.com/20200828/region`,
+Chrome 네트워크 탭으로 확인)라서, **Oracle 계정이 없어도** 그냥 주기적으로 호출해서 한국이 뜨는 순간을 잡을 수 있다.
+- `check_home_region.py`가 10분마다(`.github/workflows/check-region.yml`) 이 API를 호출해 한국(서울/춘천) 포함 여부를 확인하고, 상태가 바뀔 때만(없다가 생기면/있다가 사라지면) 텔레그램으로 알린다.
+- 필요한 Secrets은 `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` **뿐** — OCI 가입이나 API 키가 전혀 필요 없다.
+- 뜨면 바로 `https://signup.cloud.oracle.com/`에서 가입을 진행하면 된다 (한 번 정하면 못 바꾸니, 뜬 걸 알림으로 확인하고 들어가서 신중하게 선택).
+
+## B. 계정이 생긴 뒤: 무료 서버(Micro) 재고 확인 (`oracle_retry_once.py`) — **0단계(가입) 끝난 뒤에 쓰는 부분**
 Oracle Cloud 서울(또는 춘천) 홈 리전에 Always Free E2.1.Micro 인스턴스 재고("Out of host capacity")가
-풀리는지 GitHub Actions가 대신 계속 확인하고, 뜨자마자 생성한다. **PC를 켜 둘 필요 없음.**
+풀리는지 GitHub Actions가 대신 계속 확인하고, 뜨자마자 생성한다.
 
 PC용 `..\oci_launch_retry.ps1`과 판단 로직은 같다 (중복/한도 확인 → 가용 도메인마다 생성 시도 →
 재고부족/요청제한/한도초과/설정오류 분류). 다른 점은 반복을 PC의 72시간 루프 대신 **cron이 담당**한다는 것뿐이다.
