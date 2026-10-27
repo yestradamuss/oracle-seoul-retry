@@ -1,7 +1,12 @@
 name: oracle-korea-region-check
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      send_test:
+        description: "텔레그램 연결 테스트 메시지만 보내기"
+        type: boolean
+        default: false
   schedule:
     - cron: "*/10 * * * *"   # 10분마다. 인증 없는 공개 API 호출 1번뿐이라 부담 없음.
 
@@ -22,10 +27,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: 텔레그램 테스트 (수동 실행 + send_test 체크 시)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.send_test }}
+        run: python3 check_home_region.py --test
+
       - name: 한국 홈 리전 노출 여부 확인
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.send_test) }}
         run: python3 check_home_region.py
 
       - name: 상태 저장 (바뀐 경우에만 커밋)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.send_test) }}
         run: |
           git add region_state.json
           if ! git diff --cached --quiet; then

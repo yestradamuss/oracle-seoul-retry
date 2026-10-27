@@ -9,6 +9,7 @@ oci_launch_retry.py(이미 계정이 있고 무료 서버 재고를 기다리는
 상태는 저장소의 region_state.json에 "지금 한국이 보이는지"만 기록해서, 뜰 때 딱 1번만 알린다
 (매 실행마다 같은 결과를 반복 알리지 않음).
 """
+import argparse
 import json
 import os
 import sys
@@ -83,6 +84,16 @@ def save_state(state):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--test", action="store_true", help="텔레그램 연결 테스트 메시지만 보내고 종료 (상태 변경 없음)")
+    args = ap.parse_args()
+
+    if args.test:
+        msg = "[오라클-리전] 테스트 메시지입니다. 이게 왔으면 시크릿이 정상 연결된 것입니다."
+        print(msg)
+        telegram(msg)
+        return 0
+
     try:
         data = fetch_regions()
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
